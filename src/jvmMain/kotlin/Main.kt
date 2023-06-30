@@ -1,25 +1,24 @@
 import androidx.compose.material.MaterialTheme
 import androidx.compose.desktop.ui.tooling.preview.Preview
-import androidx.compose.material.Button
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.github.kwhat.jnativehook.GlobalScreen
 import com.github.kwhat.jnativehook.mouse.NativeMouseEvent
 import com.github.kwhat.jnativehook.mouse.NativeMouseListener
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import java.util.LinkedList
+import javax.sound.sampled.AudioFormat
+import javax.sound.sampled.AudioFormat.Encoding.PCM_SIGNED
+import javax.sound.sampled.AudioSystem
 
 const val CONFIG_BUTTON_CODE = 4
-const val VTT_APP_ID = 35514218
-const val VTT_APP_API_KEY = "z9E2rDOtT7I0zE2Hkx9BCMVc"
-const val VTT_APP_SECRET_KEY = "9B8K73TCSWtmEVkhlc8Ol7ZypX178t7c"
 
 fun main() = application {
-    Window(onCloseRequest = ::exitApplication) {
+    Window(onCloseRequest = ::exitApplication, alwaysOnTop = true) {
         App()
     }
 }
@@ -27,22 +26,20 @@ fun main() = application {
 @Composable
 @Preview
 fun App() {
-    var text by remember { mutableStateOf("Hello, World!") }
-
     startMonitor()
 
     MaterialTheme {
-        Button(onClick = {
-            text = "Hello, Desktop!"
-        }) {
-            Text(text)
-        }
+        val text by GptHelper.messageFlow.collectAsState()
+        Text(text = text)
     }
 }
 
 private fun startMonitor() {
     GlobalScreen.registerNativeHook()
     GlobalScreen.addNativeMouseListener(object : NativeMouseListener {
+        private var start: Boolean = false
+        private var job: Job? = null
+
         override fun nativeMousePressed(nativeEvent: NativeMouseEvent?) {
             if (nativeEvent?.button != CONFIG_BUTTON_CODE) {
                 return
@@ -58,14 +55,27 @@ private fun startMonitor() {
         }
 
         private fun startCapture() {
+            start = true
             println("find mouse button [$CONFIG_BUTTON_CODE] pressed, start to capture system audio output stream...")
-            // https://blog.csdn.net/qq_41054313/article/details/89640209
+            job?.cancel()
+            job = ApplicationDefaultScope.launch(Dispatchers.IO) {
+                val audioFormat = AudioFormat(PCM_SIGNED, 16000f, 16, 1, (16 / 8) * 1, 16000f, false)
+                val targetLine = AudioSystem.getTargetDataLine(audioFormat).apply { open(); start(); }
+                val byteArrayList = LinkedList<ByteArray>()
+                while (start && targetLine.read(ByteArray(1024 * 10).apply { byteArrayList.add(this) }, 0, 1024 * 10) > 0) {
+                    // ignore
+                }
+                val text = AipSpeechManager.pcmAsr(
+                    ByteArray(1024 * 10 * byteArrayList.size).apply {  },
+                    16000
+                )
+                GptHelper.forward(text)
+            }
         }
 
         private fun endCapture() {
+            start = false
             println("mouse button [$CONFIG_BUTTON_CODE] released, stop capture.")
-            // https://ai.baidu.com/ai-doc/SPEECH/plbxfq24s
-            // chat gpt大模型相关API调用
         }
     })
 }

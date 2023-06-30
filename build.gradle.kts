@@ -25,11 +25,8 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation(files(
                     "libs/jnativehook-2.2.2.jar",
-                    "libs/aip-java-sdk.4.16.16.jar",
-                    "libs/json-20160810.jar",
-                    "slf4j-api-1.7.25.jar",
-                    "slf4j-simple-1.7.25.jar",
                 ))
+                implementation("com.baidu.aip:java-sdk:4.16.16")
             }
         }
         val jvmTest by getting
