@@ -5,7 +5,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
 
-object GptEngine {
+object GPTEngine {
     private const val ADDRESS = "https://api.texttools.cn/api/chat/stream"
 
     var PREFIX_VOICE = "假设场景：你是一个Java程序员，正在参加程序员的面试，现在我向你提出问题，请尝试从一个程序员的角度回答问题。" +

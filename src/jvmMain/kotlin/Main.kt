@@ -1,5 +1,5 @@
-import GptEngine.PREFIX_ALGO
-import GptEngine.PREFIX_VOICE
+import GPTEngine.PREFIX_ALGO
+import GPTEngine.PREFIX_VOICE
 import androidx.compose.material.MaterialTheme
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.ScrollState
@@ -62,7 +62,7 @@ fun App() {
                 textStyle = TextStyle(fontSize = 10.sp),
                 singleLine = true,
             )
-            val response by GptEngine.messageFlow.collectAsState()
+            val response by GPTEngine.messageFlow.collectAsState()
             Text(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -120,7 +120,7 @@ private fun startVoiceMonitor() {
             job = ApplicationDefaultScope.launch(Dispatchers.IO) {
                 val data = VoiceCollector.collectPcmData { start }
                 val text = AipManager.pcmAsr(data, 16000)
-                GptEngine.forward(text)
+                GPTEngine.forward(text)
             }
         }
 
@@ -154,7 +154,7 @@ private fun startScreenshotMonitor() {
             ImageIO.write(bufferedImage, "jpg", jpgFile)
             val ocrString = AipManager.jpgOcr(jpgFile.absolutePath)
             jpgFile.delete()
-            GptEngine.algo(ocrString)
+            GPTEngine.algo(ocrString)
         }
     })
 }

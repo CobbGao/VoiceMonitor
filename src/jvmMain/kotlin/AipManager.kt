@@ -1,6 +1,5 @@
 import com.baidu.aip.ocr.AipOcr
 import com.baidu.aip.speech.AipSpeech
-import java.lang.StringBuilder
 
 private const val VTT_APP_ID = "35514218"
 private const val VTT_APP_API_KEY = "z9E2rDOtT7I0zE2Hkx9BCMVc"
