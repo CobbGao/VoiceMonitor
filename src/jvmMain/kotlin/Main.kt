@@ -1,5 +1,5 @@
-import GptHelper.PREFIX_ALGO
-import GptHelper.PREFIX_VOICE
+import GptEngine.PREFIX_ALGO
+import GptEngine.PREFIX_VOICE
 import androidx.compose.material.MaterialTheme
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.ScrollState
@@ -24,19 +24,13 @@ import com.github.kwhat.jnativehook.mouse.NativeMouseWheelListener
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import java.awt.Rectangle
 import java.awt.Robot
-import java.awt.Toolkit
-import java.awt.datatransfer.DataFlavor
-import java.awt.event.KeyEvent
-import java.util.LinkedList
-import javax.sound.sampled.AudioFormat
-import javax.sound.sampled.AudioFormat.Encoding.PCM_SIGNED
-import javax.sound.sampled.AudioSystem
-
-private const val BUTTON_CODE_LEFT = 1
+import java.io.File
+import javax.imageio.ImageIO
 
 const val BUTTON_CODE_VOICE = 4
-const val BUTTON_CODE_CLIPBOARD = 5
+const val BUTTON_CODE_SCREENSHOT = 5
 
 fun main() = application {
     Window(onCloseRequest = ::exitApplication, alwaysOnTop = true) {
@@ -68,7 +62,7 @@ fun App() {
                 textStyle = TextStyle(fontSize = 10.sp),
                 singleLine = true,
             )
-            val response by GptHelper.messageFlow.collectAsState()
+            val response by GptEngine.messageFlow.collectAsState()
             Text(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -86,7 +80,7 @@ private fun startMonitor(scrollState: ScrollState) {
     adaptScroll(scrollState)
 
     startVoiceMonitor()
-    startClipboardMonitor()
+    startScreenshotMonitor()
 }
 
 fun adaptScroll(scrollState: ScrollState) {
@@ -124,20 +118,9 @@ private fun startVoiceMonitor() {
             println("find mouse button [$BUTTON_CODE_VOICE] pressed, start to capture system audio output stream...")
             job?.cancel()
             job = ApplicationDefaultScope.launch(Dispatchers.IO) {
-                val audioFormat = AudioFormat(PCM_SIGNED, 16000f, 16, 1, (16 / 8) * 1, 16000f, false)
-                val targetLine = AudioSystem.getTargetDataLine(audioFormat).apply { open(); start(); }
-                val byteArrayList = LinkedList<ByteArray>()
-                while (start && targetLine.read(ByteArray(1024 * 10).apply { byteArrayList.add(this) }, 0, 1024 * 10) > 0) {
-                    // ignore
-                }
-                targetLine.close()
-                val text = AipSpeechManager.pcmAsr(
-                    ByteArray(1024 * 10 * byteArrayList.size).apply {
-                        byteArrayList.forEachIndexed { index, bytes -> bytes.copyInto(this, index * 1024 * 10) }
-                    },
-                    16000
-                )
-                GptHelper.forward(text)
+                val data = VoiceCollector.collectPcmData { start }
+                val text = AipManager.pcmAsr(data, 16000)
+                GptEngine.forward(text)
             }
         }
 
@@ -148,37 +131,30 @@ private fun startVoiceMonitor() {
     })
 }
 
-private fun startClipboardMonitor() {
+private fun startScreenshotMonitor() {
     GlobalScreen.addNativeMouseListener(object : NativeMouseListener {
         private val robot = Robot()
-        private var time = 0L
+        private var start = 0 to 0
+
         override fun nativeMousePressed(nativeEvent: NativeMouseEvent?) {
-            when(nativeEvent?.button) {
-                BUTTON_CODE_LEFT -> { time = System.currentTimeMillis() }
+            if (nativeEvent?.button != BUTTON_CODE_SCREENSHOT) {
+                return
             }
+            start = nativeEvent.x to nativeEvent.y
         }
 
         override fun nativeMouseReleased(nativeEvent: NativeMouseEvent?) {
-            when(nativeEvent?.button) {
-                BUTTON_CODE_LEFT -> {
-                    if (System.currentTimeMillis() - time > 500L) {
-                        robot.keyPress(KeyEvent.VK_CONTROL)
-                        robot.keyPress(KeyEvent.VK_C)
-                        robot.keyRelease(KeyEvent.VK_C)
-                        robot.keyRelease(KeyEvent.VK_CONTROL)
-                    }
-                }
-            }
-        }
-
-        override fun nativeMouseClicked(nativeEvent: NativeMouseEvent?) {
-            if (nativeEvent?.button != BUTTON_CODE_CLIPBOARD) {
+            if (nativeEvent?.button != BUTTON_CODE_SCREENSHOT) {
                 return
             }
-            println("mouse button [$BUTTON_CODE_CLIPBOARD] clicked, query algo.")
-            with(Toolkit.getDefaultToolkit().systemClipboard) {
-                GptHelper.algo(getContents(null).getTransferData(DataFlavor.stringFlavor) as String)
-            }
+            val end = nativeEvent.x to nativeEvent.y
+            val rect = Rectangle(start.first, start.second, end.first - start.first, end.second - start.second)
+            val bufferedImage = robot.createScreenCapture(rect)
+            val jpgFile = File.createTempFile("screenshot", ".jpg")
+            ImageIO.write(bufferedImage, "jpg", jpgFile)
+            val ocrString = AipManager.jpgOcr(jpgFile.absolutePath)
+            jpgFile.delete()
+            GptEngine.algo(ocrString)
         }
     })
 }
