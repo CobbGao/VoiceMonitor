@@ -1,5 +1,4 @@
 import com.baidu.aip.speech.AipSpeech
-import org.json.JSONObject
 
 private const val VTT_APP_ID = "35514218"
 private const val VTT_APP_API_KEY = "z9E2rDOtT7I0zE2Hkx9BCMVc"
@@ -13,7 +12,9 @@ object AipSpeechManager {
 
     fun pcmAsr(pcmData: ByteArray, rate: Int): String {
         return with(client.asr(pcmData, "pcm", rate, null)) {
-            return@with optJSONArray("result")?.getString(0) ?: ""
+            return@with optJSONArray("result")?.getString(0)?.format() ?: ""
         }
     }
+
+    private fun String.format() = this.replace(Regex("\\p{P}"), "")
 }

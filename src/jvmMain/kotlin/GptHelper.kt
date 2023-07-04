@@ -7,7 +7,9 @@ import java.nio.charset.StandardCharsets
 object GptHelper {
     private const val ADDRESS = "https://api.texttools.cn/api/chat/stream"
 
-    private const val PREFIX = "假设场景：你是一个Java程序员，正在参加程序员的面试，现在我向你提出问题，请尝试从一个程序员的角度回答问题。由于我提出的问题文本来自于语音识别技术，当问题晦涩难懂时，尝试根据中文发音猜测对应英文词汇来理解问题。"
+    var PREFIX = "假设场景：你是一个Java程序员，正在参加程序员的面试，现在我向你提出问题，请尝试从一个程序员的角度回答问题。" +
+            "由于我提出的问题文本来自于语音识别技术，当问题晦涩难懂时，尝试根据中文发音猜测对应英文词汇来理解问题，一些可能对应的英文单词有：Java、Spring Boot。" +
+            "下面是问题："
 
     val messageFlow = MutableStateFlow("")
 
@@ -17,7 +19,7 @@ object GptHelper {
         currentJob?.cancel()
         currentJob = ApplicationDefaultScope.launch(Dispatchers.IO) {
             if (content.isBlank()) {
-                messageFlow.value = "prefix: $PREFIX\ncontent: [无语音识别结果]:\n"
+                messageFlow.value = "prefix: $PREFIX\nquery: [无语音识别结果]:\n"
                 return@launch
             }
             forwardInner(this, content)
@@ -25,7 +27,7 @@ object GptHelper {
     }
 
     private fun forwardInner(scope: CoroutineScope, content: String) {
-        messageFlow.value = "prefix: $PREFIX\ncontent: $content:\n"
+        messageFlow.value = "content: $content:\n"
         val url = URL(ADDRESS)
         val connection = url.openConnection() as HttpURLConnection
         connection.requestMethod = "POST"
@@ -45,7 +47,7 @@ object GptHelper {
             return
         }
         val bytes = ByteArray(1024)
-        var len = 0
+        var len: Int
         val inputStream = connection.inputStream
         while (inputStream.read(bytes).also { len = it } != -1 && scope.isActive) {
             messageFlow.value += String(bytes, 0, len, StandardCharsets.UTF_8)

@@ -1,6 +1,9 @@
+import GptHelper.PREFIX
 import androidx.compose.material.MaterialTheme
 import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material.Text
+import androidx.compose.material.TextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -29,8 +32,15 @@ fun App() {
     startMonitor()
 
     MaterialTheme {
-        val text by GptHelper.messageFlow.collectAsState()
-        Text(text = text)
+        Column {
+            var text by remember { mutableStateOf(PREFIX) }
+            TextField(
+                value = text,
+                onValueChange = { PREFIX = it; text = it },
+            )
+            val response by GptHelper.messageFlow.collectAsState()
+            Text(text = response)
+        }
     }
 }
 
@@ -65,8 +75,11 @@ private fun startMonitor() {
                 while (start && targetLine.read(ByteArray(1024 * 10).apply { byteArrayList.add(this) }, 0, 1024 * 10) > 0) {
                     // ignore
                 }
+                targetLine.close()
                 val text = AipSpeechManager.pcmAsr(
-                    ByteArray(1024 * 10 * byteArrayList.size).apply {  },
+                    ByteArray(1024 * 10 * byteArrayList.size).apply {
+                        byteArrayList.forEachIndexed { index, bytes -> bytes.copyInto(this, index * 1024 * 10) }
+                    },
                     16000
                 )
                 GptHelper.forward(text)
