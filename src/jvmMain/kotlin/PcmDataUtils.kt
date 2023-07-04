@@ -3,12 +3,22 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 
-private fun ByteArray.toWavFile(): File {
+fun ByteArray.toWavFile(): File {
     val file = File.createTempFile("wav-", ".wav")
     var fos: FileOutputStream? = null
     try {
         fos = FileOutputStream(file)
-        val header = WaveHeader(size + (44 - 8), 16, 16, 1, 0x0001, 16000, (1 * 16 / 8).toShort(), (16000 * 1 * 16 / 8).toShort(), size)
+        val header = WaveHeader(
+            fileLength = size + (44 - 8),
+            fmtHdrLength = 16,
+            formatTag = 0x0001,
+            channels = 1,
+            samplesPerSec = 16000,
+            avgBytesPerSec = 1 * 16 / 8 * 16000,
+            blockAlign = (1 * 16 / 8).toShort(),
+            bitsPerSample = 16,
+            dataHdrLength = size,
+        )
         val headerBytes: ByteArray = header.header
         assert(headerBytes.size == 44) // WAV标准，头部应该是44字节
         val byteResult = ByteArray(headerBytes.size + size)
@@ -30,15 +40,15 @@ private fun ByteArray.toWavFile(): File {
 }
 
 private data class WaveHeader(
-    private val fileLength: Int = 0,
-    private val fmtHdrLength: Int = 0,
-    private val formatTag: Short = 0,
-    private val channels: Short = 0,
-    private val samplesPerSec: Int = 0,
-    private val avgBytesPerSec: Int = 0,
-    private val blockAlign: Short = 0,
-    private val bitsPerSample: Short = 0,
-    private val dataHdrLength: Int = 0,
+    private val fileLength: Int,
+    private val fmtHdrLength: Int,
+    private val formatTag: Short,
+    private val channels: Short,
+    private val samplesPerSec: Int,
+    private val avgBytesPerSec: Int,
+    private val blockAlign: Short,
+    private val bitsPerSample: Short,
+    private val dataHdrLength: Int,
 ) {
     @get:Throws(IOException::class)
     val header: ByteArray
@@ -46,6 +56,7 @@ private data class WaveHeader(
             writeChar(it, FILE_ID)
             writeInt(it, fileLength)
             writeChar(it, WAV_TAG)
+
             writeChar(it, FMT_HDR_ID)
             writeInt(it, fmtHdrLength)
             writeShort(it, formatTag.toInt())
@@ -54,6 +65,7 @@ private data class WaveHeader(
             writeInt(it, avgBytesPerSec)
             writeShort(it, blockAlign.toInt())
             writeShort(it, bitsPerSample.toInt())
+
             writeChar(it, DATA_HDR_ID)
             writeInt(it, dataHdrLength)
             it.flush()
@@ -79,10 +91,7 @@ private data class WaveHeader(
     }
 
     private fun writeChar(bos: ByteArrayOutputStream, id: CharArray) {
-        for (i in id.indices) {
-            val c = id[i]
-            bos.write(c.code)
-        }
+        id.forEach { bos.write(it.code) }
     }
 
     private companion object {
