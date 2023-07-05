@@ -102,8 +102,7 @@ fun App() {
             Text(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.LightGray)
-                    .verticalScroll(scrollState),
+                    .background(Color.LightGray),
                 text = content,
                 fontSize = 10.sp,
             )
