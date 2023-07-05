@@ -8,10 +8,8 @@ import java.nio.charset.StandardCharsets
 object GPTEngine {
     private const val ADDRESS = "https://api.texttools.cn/api/chat/stream"
 
-    var PREFIX_VOICE = "假设场景：你是一个Java程序员，正在参加程序员的面试，现在我向你提出问题，请尝试从一个程序员的角度回答问题。" +
-            "问题的文本内容来自于语音识别技术，当问题晦涩难懂时，尝试根据中文发音猜测对应英文词汇来理解问题，一些可能出现的英文单词有：Java、Spring Boot。" +
-            "下面是问题："
-    var PREFIX_ALGO = "解答下列问题，给出Java实现。优先给出性能更好的实现。尽量避免使用递归思想。先给出代码实现，再阐述解题思路。"
+    var PREFIX_VOICE = PREFIX_VOICE_MAP["MY"]!!
+    var PREFIX_ALGO = PREFIX_ALGO_MAP["MY"]!!
 
     val contentFlow = MutableStateFlow("")
     val messageFlow = MutableStateFlow("")
@@ -33,7 +31,7 @@ object GPTEngine {
         currentJob?.cancel()
         currentJob = ApplicationDefaultScope.launch(Dispatchers.IO) {
             if (content.isBlank()) {
-                contentFlow.value = "query: [剪贴板无文本内容]:\n"
+                contentFlow.value = "query: [OCR无文本内容]:\n"
                 return@launch
             }
             forwardInner(this, PREFIX_ALGO, content)
@@ -41,7 +39,7 @@ object GPTEngine {
     }
 
     private fun forwardInner(scope: CoroutineScope, prefix: String, content: String) {
-        contentFlow.value = "content: \n$content:\n"
+        contentFlow.value = "content: \n$content"
         messageFlow.value = ""
         val url = URL(ADDRESS)
         val connection = url.openConnection() as HttpURLConnection

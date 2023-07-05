@@ -25,6 +25,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.*
 import com.github.kwhat.jnativehook.GlobalScreen
+import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent
+import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent.*
+import com.github.kwhat.jnativehook.keyboard.NativeKeyListener
 import com.github.kwhat.jnativehook.mouse.NativeMouseEvent
 import com.github.kwhat.jnativehook.mouse.NativeMouseListener
 import com.github.kwhat.jnativehook.mouse.NativeMouseWheelEvent
@@ -123,9 +126,10 @@ private fun startMonitor(scrollState: ScrollState) {
 
     startVoiceMonitor()
     startScreenshotMonitor()
+    startContentEditorMonitor()
 }
 
-fun adaptScroll(scrollState: ScrollState) {
+private fun adaptScroll(scrollState: ScrollState) {
     GlobalScreen.addNativeMouseWheelListener(object : NativeMouseWheelListener {
         override fun nativeMouseWheelMoved(nativeEvent: NativeMouseWheelEvent?) {
             val direction = nativeEvent?.wheelRotation ?: return
@@ -199,6 +203,37 @@ private fun startScreenshotMonitor() {
             GPTEngine.algo(ocrString)
         }
     })
+}
+
+private fun startContentEditorMonitor() {
+    GlobalScreen.addNativeKeyListener(object : NativeKeyListener {
+        private var cursorIndex = 0
+
+        override fun nativeKeyTyped(nativeEvent: NativeKeyEvent?) {
+            if (nativeEvent == null) {
+                return
+            }
+            when (nativeEvent.rawCode) {
+                65407 /* Num Lock */ -> GPTEngine.forward(GPTEngine.contentFlow.value)
+                65361 /* <- */ -> cursorIndex = maxOf(0, cursorIndex - 1)
+                65363 /* -> */ -> cursorIndex = minOf(GPTEngine.contentFlow.value.length, cursorIndex + 1)
+                65535 /* DEL */ -> GPTEngine.contentFlow.value = GPTEngine.contentFlow.value.removeRange(cursorIndex, cursorIndex + 1)
+                65288 /* BACKSPACE */ -> {
+                    GPTEngine.contentFlow.value = GPTEngine.contentFlow.value.removeRange(cursorIndex - 1, cursorIndex)
+                    cursorIndex = maxOf(0, cursorIndex - 1)
+                }
+                else -> {
+                    val char = nativeEvent.keyChar
+                    GPTEngine.contentFlow.value = GPTEngine.contentFlow.value.insert(char.toString(), cursorIndex)
+                    cursorIndex++
+                }
+            }
+        }
+    })
+}
+
+private fun String.insert(insert: String, index: Int): String {
+    return substring(0, index) + insert + substring(index, length)
 }
 
 
