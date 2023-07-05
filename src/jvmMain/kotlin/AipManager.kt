@@ -13,7 +13,7 @@ object AipManager {
         setSocketTimeoutInMillis(60000)
     }
 
-    fun pcmAsr(data: ByteArray, rate: Int): String {
+    fun pcmAsr(data: ByteArray): String {
         val folder = ClassLoader.getSystemClassLoader().getResource("sherpa-ncnn.exe")?.toURI()?.path?.removeRange(0, 1)?.replace("sherpa-ncnn.exe", "")!!
         val exe = folder + "sherpa-ncnn.exe"
         val model = folder + "model"

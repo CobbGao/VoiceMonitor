@@ -3,19 +3,27 @@ import GPTEngine.PREFIX_VOICE
 import androidx.compose.material.MaterialTheme
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.runtime.*
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
+import androidx.compose.ui.window.*
 import com.github.kwhat.jnativehook.GlobalScreen
 import com.github.kwhat.jnativehook.mouse.NativeMouseEvent
 import com.github.kwhat.jnativehook.mouse.NativeMouseListener
@@ -26,15 +34,56 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.awt.Rectangle
 import java.awt.Robot
+import java.awt.Toolkit
 import java.io.File
 import javax.imageio.ImageIO
 
 const val BUTTON_CODE_VOICE = 4
 const val BUTTON_CODE_SCREENSHOT = 5
 
+@OptIn(ExperimentalComposeUiApi::class)
 fun main() = application {
-    Window(onCloseRequest = ::exitApplication, alwaysOnTop = true) {
+    val settingsDialogVisible = remember { mutableStateOf(false) }
+    Window(
+        onCloseRequest = ::exitApplication,
+        state = rememberWindowState().apply { size = DpSize(400.dp, (Toolkit.getDefaultToolkit().screenSize.height - 100).dp) },
+        title = "App",
+        alwaysOnTop = true,
+        onKeyEvent = { event -> when(event.key) {
+            Key.F12 -> {
+                settingsDialogVisible.value = true
+                true
+            }
+            else -> false
+        } }
+    ) {
         App()
+
+        Dialog(
+            onCloseRequest = { settingsDialogVisible.value = false },
+            visible = settingsDialogVisible.value,
+            title = "settings",
+        ) {
+            val scrollState = rememberScrollState()
+            Column(
+                modifier = Modifier.verticalScroll(scrollState),
+            ) {
+                var text1 by remember { mutableStateOf(PREFIX_VOICE) }
+                TextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = text1,
+                    onValueChange = { PREFIX_VOICE = it; text1 = it },
+                    textStyle = TextStyle(fontSize = 10.sp),
+                )
+                var text2 by remember { mutableStateOf(PREFIX_ALGO) }
+                TextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = text2,
+                    onValueChange = { PREFIX_ALGO = it; text2 = it },
+                    textStyle = TextStyle(fontSize = 10.sp),
+                )
+            }
+        }
     }
 }
 
@@ -46,28 +95,21 @@ fun App() {
 
     MaterialTheme {
         Column {
-            var text1 by remember { mutableStateOf(PREFIX_VOICE) }
-            TextField(
-                modifier = Modifier.fillMaxWidth(),
-                value = text1,
-                onValueChange = { PREFIX_VOICE = it; text1 = it },
-                textStyle = TextStyle(fontSize = 10.sp),
-                singleLine = true,
-            )
-            var text2 by remember { mutableStateOf(PREFIX_ALGO) }
-            TextField(
-                modifier = Modifier.fillMaxWidth(),
-                value = text2,
-                onValueChange = { PREFIX_ALGO = it; text2 = it },
-                textStyle = TextStyle(fontSize = 10.sp),
-                singleLine = true,
-            )
-            val response by GPTEngine.messageFlow.collectAsState()
+            val content by GPTEngine.contentFlow.collectAsState()
             Text(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .background(Color.LightGray)
                     .verticalScroll(scrollState),
-                text = response,
+                text = content,
+                fontSize = 10.sp,
+            )
+            val message by GPTEngine.messageFlow.collectAsState()
+            Text(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState),
+                text = message,
                 fontSize = 10.sp,
             )
         }
@@ -119,7 +161,7 @@ private fun startVoiceMonitor() {
             job?.cancel()
             job = ApplicationDefaultScope.launch(Dispatchers.IO) {
                 val data = VoiceCollector.collectPcmData { start }
-                val text = AipManager.pcmAsr(data, 16000)
+                val text = AipManager.pcmAsr(data)
                 GPTEngine.forward(text)
             }
         }

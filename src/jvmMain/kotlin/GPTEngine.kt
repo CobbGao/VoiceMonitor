@@ -13,6 +13,7 @@ object GPTEngine {
             "下面是问题："
     var PREFIX_ALGO = "解答下列问题，给出Java实现。优先给出性能更好的实现。尽量避免使用递归思想。先给出代码实现，再阐述解题思路。"
 
+    val contentFlow = MutableStateFlow("")
     val messageFlow = MutableStateFlow("")
 
     private var currentJob: Job? = null
@@ -21,7 +22,7 @@ object GPTEngine {
         currentJob?.cancel()
         currentJob = ApplicationDefaultScope.launch(Dispatchers.IO) {
             if (content.isBlank()) {
-                messageFlow.value = "query: [无语音识别结果]:\n"
+                contentFlow.value = "query: [无语音识别结果]:\n"
                 return@launch
             }
             forwardInner(this, PREFIX_VOICE, content)
@@ -32,7 +33,7 @@ object GPTEngine {
         currentJob?.cancel()
         currentJob = ApplicationDefaultScope.launch(Dispatchers.IO) {
             if (content.isBlank()) {
-                messageFlow.value = "query: [剪贴板无文本内容]:\n"
+                contentFlow.value = "query: [剪贴板无文本内容]:\n"
                 return@launch
             }
             forwardInner(this, PREFIX_ALGO, content)
@@ -40,7 +41,8 @@ object GPTEngine {
     }
 
     private fun forwardInner(scope: CoroutineScope, prefix: String, content: String) {
-        messageFlow.value = "content: $content:\n"
+        contentFlow.value = "content: \n$content:\n"
+        messageFlow.value = ""
         val url = URL(ADDRESS)
         val connection = url.openConnection() as HttpURLConnection
         connection.requestMethod = "POST"
