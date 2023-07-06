@@ -6,7 +6,6 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
@@ -46,30 +45,53 @@ const val BUTTON_CODE_SCREENSHOT = 5
 
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() = application {
-    val settingsDialogVisible = remember { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
+    startMonitor(scrollState)
+
+    var settingsDialogVisible by remember { mutableStateOf(false) }
+    val windowState = rememberWindowState(
+        size = DpSize(400.dp, (Toolkit.getDefaultToolkit().screenSize.height - 100).dp),
+    )
+    val currentState by rememberUpdatedState(windowState)
+    GlobalScreen.addNativeKeyListener(object : NativeKeyListener {
+        override fun nativeKeyPressed(nativeEvent: NativeKeyEvent?) {
+            if (nativeEvent == null) {
+                return
+            }
+            when (nativeEvent.rawCode) {
+                27 /* ESC */  -> currentState.isMinimized = !currentState.isMinimized
+                37 /* <- */   -> currentState.position = WindowPosition(currentState.position.x - 10.dp, currentState.position.y)
+                39 /* -> */   -> currentState.position = WindowPosition(currentState.position.x + 10.dp, currentState.position.y)
+                38 /* up */   -> currentState.position = WindowPosition(currentState.position.x, currentState.position.y - 10.dp)
+                40 /* down */ -> currentState.position = WindowPosition(currentState.position.x, currentState.position.y + 10.dp)
+            }
+        }
+    })
     Window(
         onCloseRequest = ::exitApplication,
-        state = rememberWindowState().apply { size = DpSize(400.dp, (Toolkit.getDefaultToolkit().screenSize.height - 100).dp) },
-        title = "App",
+        state = windowState,
+        title = "DB Browser",
         alwaysOnTop = true,
         onKeyEvent = { event -> when(event.key) {
             Key.F12 -> {
-                settingsDialogVisible.value = true
+                settingsDialogVisible = true
                 true
             }
             else -> false
-        } }
+        } },
+        focusable = false,
     ) {
-        App()
+
+        App(scrollState)
 
         Dialog(
-            onCloseRequest = { settingsDialogVisible.value = false },
-            visible = settingsDialogVisible.value,
+            onCloseRequest = { settingsDialogVisible = false },
+            visible = settingsDialogVisible,
             title = "settings",
         ) {
-            val scrollState = rememberScrollState()
+            val dialogScrollState = rememberScrollState()
             Column(
-                modifier = Modifier.verticalScroll(scrollState),
+                modifier = Modifier.verticalScroll(dialogScrollState),
             ) {
                 var text1 by remember { mutableStateOf(PREFIX_VOICE) }
                 TextField(
@@ -83,7 +105,7 @@ fun main() = application {
                     modifier = Modifier.fillMaxWidth(),
                     value = text2,
                     onValueChange = { PREFIX_ALGO = it; text2 = it },
-                    textStyle = TextStyle(fontSize = 10.sp),
+                    textStyle = TextStyle(fontSize = 16.sp),
                 )
             }
         }
@@ -92,10 +114,7 @@ fun main() = application {
 
 @Composable
 @Preview
-fun App() {
-    val scrollState = rememberScrollState()
-    startMonitor(scrollState)
-
+fun App(scrollState: ScrollState) {
     MaterialTheme {
         Column {
             val content by GPTEngine.contentFlow.collectAsState()
@@ -112,7 +131,7 @@ fun App() {
                     .fillMaxSize()
                     .verticalScroll(scrollState),
                 text = message,
-                fontSize = 10.sp,
+                fontSize = 16.sp,
             )
         }
     }
@@ -125,7 +144,6 @@ private fun startMonitor(scrollState: ScrollState) {
 
     startVoiceMonitor()
     startScreenshotMonitor()
-    startContentEditorMonitor()
 }
 
 private fun adaptScroll(scrollState: ScrollState) {
@@ -202,37 +220,6 @@ private fun startScreenshotMonitor() {
             GPTEngine.algo(ocrString)
         }
     })
-}
-
-private fun startContentEditorMonitor() {
-    GlobalScreen.addNativeKeyListener(object : NativeKeyListener {
-        private var cursorIndex = 0
-
-        override fun nativeKeyTyped(nativeEvent: NativeKeyEvent?) {
-            if (nativeEvent == null) {
-                return
-            }
-            when (nativeEvent.rawCode) {
-                65407 /* Num Lock */ -> GPTEngine.forward(GPTEngine.contentFlow.value)
-                65361 /* <- */ -> cursorIndex = maxOf(0, cursorIndex - 1)
-                65363 /* -> */ -> cursorIndex = minOf(GPTEngine.contentFlow.value.length, cursorIndex + 1)
-                65535 /* DEL */ -> GPTEngine.contentFlow.value = GPTEngine.contentFlow.value.removeRange(cursorIndex, cursorIndex + 1)
-                65288 /* BACKSPACE */ -> {
-                    GPTEngine.contentFlow.value = GPTEngine.contentFlow.value.removeRange(cursorIndex - 1, cursorIndex)
-                    cursorIndex = maxOf(0, cursorIndex - 1)
-                }
-                else -> {
-                    val char = nativeEvent.keyChar
-                    GPTEngine.contentFlow.value = GPTEngine.contentFlow.value.insert(char.toString(), cursorIndex)
-                    cursorIndex++
-                }
-            }
-        }
-    })
-}
-
-private fun String.insert(insert: String, index: Int): String {
-    return substring(0, index) + insert + substring(index, length)
 }
 
 

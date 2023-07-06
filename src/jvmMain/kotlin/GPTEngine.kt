@@ -6,10 +6,10 @@ import java.net.URL
 import java.nio.charset.StandardCharsets
 
 object GPTEngine {
-    private const val ADDRESS = "https://api.texttools.cn/api/chat/stream"
+    private const val ADDRESS = "https://api.smarttext.cn/api/chat/stream"
 
-    var PREFIX_VOICE = PREFIX_VOICE_MAP["MY"]!!
-    var PREFIX_ALGO = PREFIX_ALGO_MAP["MY"]!!
+    var PREFIX_VOICE = PREFIX_VOICE_MAP["GBW"]!!
+    var PREFIX_ALGO = PREFIX_ALGO_MAP["GBW"]!!
 
     val contentFlow = MutableStateFlow("")
     val messageFlow = MutableStateFlow("")
