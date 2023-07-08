@@ -1,6 +1,8 @@
 import com.baidu.aip.ocr.AipOcr
+import kotlinx.coroutines.delay
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.io.BufferedReader
-import java.io.File
 import java.io.InputStreamReader
 
 private const val VTT_APP_ID = "35514218"
@@ -13,25 +15,19 @@ object AipManager {
         setSocketTimeoutInMillis(60000)
     }
 
-    fun pcmAsr(data: ByteArray): String {
-        val folder = ClassLoader.getSystemClassLoader().getResource("sherpa-ncnn.exe")?.toURI()?.path?.removeRange(0, 1)?.replace("sherpa-ncnn.exe", "")!!
-        val exe = folder + "sherpa-ncnn.exe"
-        val model = folder + "model"
-        return with(data.toWavFile()) {
-            exec(
-                exe,
-                "$model/tokens.txt",
-                "$model/encoder_jit_trace-pnnx.ncnn.param",
-                "$model/encoder_jit_trace-pnnx.ncnn.bin",
-                "$model/decoder_jit_trace-pnnx.ncnn.param",
-                "$model/decoder_jit_trace-pnnx.ncnn.bin",
-                "$model/joiner_jit_trace-pnnx.ncnn.param",
-                "$model/joiner_jit_trace-pnnx.ncnn.bin",
-                absolutePath,
-                "1",
-                "modified_beam_search",
-            ).also { this.delete() }
+    suspend fun pcmAsr(data: ByteArray): String {
+        val authUrl = WebIATWS.getAuthUrl(WebIATWS.hostUrl, WebIATWS.apiKey, WebIATWS.apiSecret)
+        val client = OkHttpClient.Builder().build()
+        val url = authUrl.toString().replace("http://", "ws://").replace("https://", "wss://")
+        val request = Request.Builder().url(url).build()
+        val webIATWS = WebIATWS(data)
+        client.newWebSocket(request, webIATWS)
+        var result: String? = null
+        while (result.isNullOrBlank()) {
+            result = webIATWS.obtain()
+            delay(10)
         }
+        return result
     }
 
     fun jpgOcr(path: String): String {
