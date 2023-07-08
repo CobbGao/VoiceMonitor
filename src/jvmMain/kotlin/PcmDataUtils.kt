@@ -20,7 +20,7 @@ fun ByteArray.toWavFile(): File {
             dataHdrLength = size,
         )
         val headerBytes: ByteArray = header.header
-        assert(headerBytes.size == 44) // WAV标准，头部应该是44字节
+        assert(headerBytes.size == 44)
         val byteResult = ByteArray(headerBytes.size + size)
         System.arraycopy(headerBytes, 0, byteResult, 0, headerBytes.size)
         System.arraycopy(this, 0, byteResult, headerBytes.size, size)
