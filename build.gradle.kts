@@ -28,7 +28,6 @@ kotlin {
 
                     "libs/commons-codec-1.6.jar",
                     "libs/commons-io-2.4.jar",
-                    "libs/commons-io-2.4_jb51.rar",
                     "libs/gson-2.3.1.jar",
                     "libs/netty-all-4.1.15.Final.jar",
                     "libs/okhttp-3.13.1.jar",

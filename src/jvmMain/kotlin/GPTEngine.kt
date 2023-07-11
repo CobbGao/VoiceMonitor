@@ -9,10 +9,10 @@ import java.nio.charset.StandardCharsets
 object GPTEngine {
     private const val API_BASE = "https://api.closeai-proxy.xyz"
     private const val API_KEY = "sk-1OpHZCILEUm2kQ5IPDU3KgOk1JzRzh0JdIvMAW1Al4M91jMI"
-    private const val MODEL = "gpt-3.5-turbo"
+    private const val MODEL = "gpt-4"
 
-    var PREFIX_VOICE = PREFIX_VOICE_MAP["GBW"]!!
-    var PREFIX_ALGO = PREFIX_ALGO_MAP["GBW"]!!
+    var PREFIX_VOICE = PREFIX_VOICE_MAP["GBW"]
+    var PREFIX_ALGO = PREFIX_ALGO_MAP["GBW"]
 
     val contentFlow = MutableStateFlow("")
     val messageFlow = MutableStateFlow("")
@@ -41,7 +41,7 @@ object GPTEngine {
         }
     }
 
-    private fun forwardInner(scope: CoroutineScope, prefix: String, content: String) {
+    private fun forwardInner(scope: CoroutineScope, prefix: String?, content: String) {
         contentFlow.value = "content: \n$content"
         messageFlow.value = ""
         val url = URL("$API_BASE/v1/chat/completions")

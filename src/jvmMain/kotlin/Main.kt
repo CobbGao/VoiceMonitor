@@ -93,14 +93,14 @@ fun main() = application {
             Column(
                 modifier = Modifier.verticalScroll(dialogScrollState),
             ) {
-                var text1 by remember { mutableStateOf(PREFIX_VOICE) }
+                var text1 by remember { mutableStateOf(PREFIX_VOICE ?: "") }
                 TextField(
                     modifier = Modifier.fillMaxWidth(),
                     value = text1,
                     onValueChange = { PREFIX_VOICE = it; text1 = it },
                     textStyle = TextStyle(fontSize = 10.sp),
                 )
-                var text2 by remember { mutableStateOf(PREFIX_ALGO) }
+                var text2 by remember { mutableStateOf(PREFIX_ALGO ?: "") }
                 TextField(
                     modifier = Modifier.fillMaxWidth(),
                     value = text2,
