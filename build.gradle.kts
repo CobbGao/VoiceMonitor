@@ -2,6 +2,7 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
     kotlin("multiplatform")
+    id("org.openjfx.javafxplugin") version "0.0.10"
     id("org.jetbrains.compose")
 }
 
@@ -34,6 +35,14 @@ kotlin {
                     "libs/okio-1.15.0-20180330.135339-9.jar",
                 ))
                 implementation("com.baidu.aip:java-sdk:4.16.16")
+                implementation("org.apache.pdfbox:pdfbox:2.0.24")
+                implementation(compose.uiTooling)
+                implementation(compose.web.core)
+                implementation(compose.runtime)
+                implementation(compose.foundation)
+                implementation(compose.material)
+                implementation(compose.animation)
+                implementation(compose.animationGraphics)
             }
         }
         val jvmTest by getting

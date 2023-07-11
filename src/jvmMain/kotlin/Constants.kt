@@ -1,3 +1,21 @@
+import java.util.LinkedList
+
+const val PDF_FOLDER = "/home/cobb/cobb/"
+val PDF_LIST = object : LinkedList<String>() {
+    override operator fun get(index: Int): String {
+        if (index in 0 until size) return super.get(index)
+        var target = index
+        if (index < 0) {
+            while(target < 0) target += size
+        } else {
+            while(target >= size) target -= size
+        }
+        return super.get(target)
+    }
+}.apply {
+    add("StorageSolutionProvider.pdf")
+}
+
 private const val PREFIX_VOICE_GBW = """
     假设场景：你是一个Android程序员，正在参加程序员的面试，现在我向你提出问题，请尝试从一个面试者的角度回答问题。
     问题的文本内容来自于语音识别技术，可能出现近似发音导致的误识别，

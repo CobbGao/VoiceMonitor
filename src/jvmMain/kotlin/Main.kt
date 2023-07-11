@@ -1,23 +1,22 @@
 import GPTEngine.PREFIX_ALGO
 import GPTEngine.PREFIX_VOICE
+import androidx.compose.foundation.*
 import androidx.compose.material.MaterialTheme
-import androidx.compose.desktop.ui.tooling.preview.Preview
-import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -34,10 +33,14 @@ import com.github.kwhat.jnativehook.mouse.NativeMouseWheelListener
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import org.apache.pdfbox.pdmodel.PDDocument
+import org.apache.pdfbox.rendering.PDFRenderer
 import java.awt.Rectangle
 import java.awt.Robot
 import java.awt.Toolkit
+import java.awt.image.BufferedImage
 import java.io.File
+import java.io.IOException
 import javax.imageio.ImageIO
 
 const val BUTTON_CODE_VOICE = 4
@@ -53,20 +56,56 @@ fun main() = application {
         size = DpSize(400.dp, (Toolkit.getDefaultToolkit().screenSize.height - 100).dp),
     )
     val currentState by rememberUpdatedState(windowState)
+    var currentDocIndex by remember { mutableStateOf(0) }
+    var currentPageIndex by remember { mutableStateOf(0) }
     GlobalScreen.addNativeKeyListener(object : NativeKeyListener {
+        // todo 按下ctrl时上下左右控制方向，不按下ctrl时左右切换笔记，上下滚动笔记
+        // https://stackoverflow.com/questions/67959032/how-to-use-webview-in-jetpack-compose-for-desktop-app
+        private var ctrl = false
+
         override fun nativeKeyPressed(nativeEvent: NativeKeyEvent?) {
             if (nativeEvent == null) {
                 return
             }
+            if (nativeEvent.rawCode == -999) {
+                ctrl = true
+            }
+            if (ctrl) {
+                controlMode(nativeEvent)
+                return
+            }
+            defaultMode(nativeEvent)
+        }
+
+        override fun nativeKeyReleased(nativeEvent: NativeKeyEvent?) {
+            if (nativeEvent == null) {
+                return
+            }
+            if (nativeEvent.rawCode == -999) {
+                ctrl = false
+            }
+        }
+
+        private fun controlMode(nativeEvent: NativeKeyEvent) {
             when (nativeEvent.rawCode) {
-                27 /* ESC */  -> currentState.isMinimized = !currentState.isMinimized
                 37 /* <- */   -> currentState.position = WindowPosition(currentState.position.x - 10.dp, currentState.position.y)
                 39 /* -> */   -> currentState.position = WindowPosition(currentState.position.x + 10.dp, currentState.position.y)
                 38 /* up */   -> currentState.position = WindowPosition(currentState.position.x, currentState.position.y - 10.dp)
                 40 /* down */ -> currentState.position = WindowPosition(currentState.position.x, currentState.position.y + 10.dp)
             }
         }
+
+        private fun defaultMode(nativeEvent: NativeKeyEvent) {
+            when (nativeEvent.rawCode) {
+                27 /* ESC */  -> currentState.isMinimized = !currentState.isMinimized
+                37 /* <- */   -> currentDocIndex -= 1
+                39 /* -> */   -> currentDocIndex += 1
+                38 /* up */   -> currentPageIndex -= 1
+                40 /* down */ -> currentPageIndex += 1
+            }
+        }
     })
+    // 辅助窗口
     Window(
         onCloseRequest = ::exitApplication,
         state = windowState,
@@ -81,7 +120,6 @@ fun main() = application {
         } },
         focusable = false,
     ) {
-
         App(scrollState)
 
         Dialog(
@@ -110,10 +148,28 @@ fun main() = application {
             }
         }
     }
+    // 资料窗口
+    Window(
+        onCloseRequest = ::exitApplication,
+        title = "",
+        state = rememberWindowState(placement = WindowPlacement.Maximized),
+    ) {
+        pdfBrowser(PDF_FOLDER, PDF_LIST[currentDocIndex], currentPageIndex)
+    }
 }
 
 @Composable
-@Preview
+fun pdfBrowser(folder: String, name: String, index: Int) {
+    val bitmap = decode(folder, name, index) ?: return
+    Image(
+        modifier = Modifier.fillMaxSize(),
+        bitmap = bitmap,
+        contentDescription = null,
+        contentScale = ContentScale.Fit,
+    )
+}
+
+@Composable
 fun App(scrollState: ScrollState) {
     MaterialTheme {
         Column {
@@ -220,6 +276,27 @@ private fun startScreenshotMonitor() {
             GPTEngine.algo(ocrString)
         }
     })
+}
+
+private fun decode(folder: String, name: String, index: Int): ImageBitmap? {
+    val pdfDocument: PDDocument
+    try {
+        pdfDocument = PDDocument.load(File(folder + name))
+    } catch (e: IOException) {
+        e.printStackTrace()
+        return null
+    }
+    val pdfRenderer = PDFRenderer(pdfDocument)
+    val image: BufferedImage
+    try {
+        image = pdfRenderer.renderImage(maxOf(0, minOf(index, pdfDocument.numberOfPages - 1)), 2f)
+    } catch (e: IOException) {
+        e.printStackTrace()
+        return null
+    } finally {
+        pdfDocument.close()
+    }
+    return image.toComposeImageBitmap()
 }
 
 
