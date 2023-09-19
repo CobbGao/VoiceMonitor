@@ -23,7 +23,7 @@ kotlin {
     sourceSets {
         val jvmMain by getting {
             dependencies {
-                implementation(compose.desktop.currentOs)
+                implementation(compose.desktop.windows_x64)
                 implementation(files(
                     "libs/jnativehook-2.2.2.jar",
 

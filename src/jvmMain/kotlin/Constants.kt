@@ -1,19 +1,39 @@
 import java.util.LinkedList
 
-const val PDF_FOLDER = "/home/cobb/cobb/"
+const val PDF_FOLDER = "C:\\Users\\Administrator\\Desktop\\Document\\"
 val PDF_LIST = object : LinkedList<String>() {
     override operator fun get(index: Int): String {
         if (index in 0 until size) return super.get(index)
         var target = index
         if (index < 0) {
-            while(target < 0) target += size
+            while(target < 0) {
+                target += size
+            }
         } else {
-            while(target >= size) target -= size
+            while(target >= size) {
+                target -= size
+            }
         }
         return super.get(target)
     }
 }.apply {
+    add("Android开发-高博闻-15542648253.pdf")
+    add("项目经历.pdf")
     add("StorageSolutionProvider.pdf")
+    add("Handler.pdf")
+    add("View的Touch事件传递机制.pdf")
+    add("Android.pdf")
+    add("Java.pdf")
+    add("Kotlin.pdf")
+    add("三方框架.pdf")
+    add("泛型.pdf")
+    add("Retrofit.pdf")
+    add("xiangxueketang-Java并发编程.pdf")
+    add("xiangxueketang-Java泛型与注解.pdf")
+    add("xiangxueketang-Java核心基础.pdf")
+    add("xiangxueketang-Java虚拟机原理.pdf")
+    add("通用问题.pdf")
+    add("QA.pdf")
 }
 
 private const val PREFIX_VOICE_GBW = """
@@ -35,9 +55,14 @@ private const val PREFIX_VOICE_WHY = """
     问题的文本内容来自于语音识别技术，当问题晦涩难懂时，尝试根据中文发音猜测对应英文词汇来理解问题。
     下面是问题：
     """
-val PREFIX_VOICE_MAP = mapOf("GBW" to PREFIX_VOICE_GBW, "MY" to PREFIX_VOICE_MY, "WHY" to PREFIX_VOICE_WHY)
+private const val PREFIX_VOICE_LYH = """
+    假设场景：你是一个互联网产品经理，正在参加招聘面试，现在我向你提出问题，请尝试从一个产品经理的角度回答问题。
+    问题的文本内容来自于语音识别技术，当问题晦涩难懂时，尝试根据中文发音猜测对应术语词汇来理解问题。
+    下面是问题：
+"""
+val PREFIX_VOICE_MAP = mapOf("GBW" to PREFIX_VOICE_GBW, "MY" to PREFIX_VOICE_MY, "WHY" to PREFIX_VOICE_WHY, "LYH" to PREFIX_VOICE_LYH)
 
-private const val PREFIX_ALGO_GBW = "解答下列算法问题，给出Kotlin实现，关键部分给出中文注释。如果存在多种常见的解决方案，所有解决方案均要给出，优先给出性能更好的实现。当问题可以通过递归和非递归解决时，两种方案均要给出，优先给出递归方案。先给出代码实现，再阐述解题思路。题目可能直接来自互联网如https://leetcode.cn/，也可能是其变种。"
+private const val PREFIX_ALGO_GBW = "解答下列算法问题，给出Kotlin实现，关键部分给出中文注释。如果存在多种常见的解决方案，所有解决方案均要给出，优先给出性能更好的实现。当问题可以通过递归和非递归解决时，两种方案均要给出，优先给出递归方案。先给出代码实现，再阐述解题思路。当问题可以通过Java/Kotlin/Android的已有复杂数据结构简单地实现时，不要给出该实现，而是给出更底层的实现代码，如：实现一个选出小于给定值的数据结构时，不要直接使用TreeSet实现，而是具体实现一个平衡二叉树的查找算法。而LinkedList等则可以直接给出"
 private const val PREFIX_ALGO_MY = "解答下列算法问题，给出Java实现，关键部分给出中文注释。优先给出性能更好的实现。尽量避免使用递归思想。先给出代码实现，再阐述解题思路。"
 private const val PREFIX_ALGO_WHY = "解答下列算法问题，给出ObjectC实现，关键部分给出中文注释。优先给出性能更好的实现。尽量避免使用递归思想。先给出代码实现，再阐述解题思路。"
 val PREFIX_ALGO_MAP = mapOf("GBW" to PREFIX_ALGO_GBW, "MY" to PREFIX_ALGO_MY, "WHY" to PREFIX_ALGO_WHY)

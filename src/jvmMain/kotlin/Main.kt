@@ -18,6 +18,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,6 +35,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.apache.pdfbox.pdmodel.PDDocument
+import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException
 import org.apache.pdfbox.rendering.PDFRenderer
 import java.awt.Rectangle
 import java.awt.Robot
@@ -67,23 +69,18 @@ fun main() = application {
             if (nativeEvent == null) {
                 return
             }
-            if (nativeEvent.rawCode == -999) {
-                ctrl = true
+            if (nativeEvent.rawCode == 162) {
+                ctrl = !ctrl
+                println("ctrl=$ctrl")
+                return
             }
             if (ctrl) {
                 controlMode(nativeEvent)
                 return
             }
+            println("default mode start")
             defaultMode(nativeEvent)
-        }
-
-        override fun nativeKeyReleased(nativeEvent: NativeKeyEvent?) {
-            if (nativeEvent == null) {
-                return
-            }
-            if (nativeEvent.rawCode == -999) {
-                ctrl = false
-            }
+            println("default mode end")
         }
 
         private fun controlMode(nativeEvent: NativeKeyEvent) {
@@ -98,9 +95,15 @@ fun main() = application {
         private fun defaultMode(nativeEvent: NativeKeyEvent) {
             when (nativeEvent.rawCode) {
                 27 /* ESC */  -> currentState.isMinimized = !currentState.isMinimized
-                37 /* <- */   -> currentDocIndex -= 1
-                39 /* -> */   -> currentDocIndex += 1
-                38 /* up */   -> currentPageIndex -= 1
+                37 /* <- */   -> {
+                    currentDocIndex -= 1
+                    currentPageIndex = 0
+                }
+                39 /* -> */   -> {
+                    currentDocIndex += 1
+                    currentPageIndex = 0
+                }
+                38 /* up */   -> currentPageIndex = maxOf(0, currentPageIndex - 1)
                 40 /* down */ -> currentPageIndex += 1
             }
         }
@@ -153,20 +156,27 @@ fun main() = application {
         onCloseRequest = ::exitApplication,
         title = "",
         state = rememberWindowState(placement = WindowPlacement.Maximized),
+        focusable = false,
     ) {
+        println(currentDocIndex)
         pdfBrowser(PDF_FOLDER, PDF_LIST[currentDocIndex], currentPageIndex)
     }
 }
 
 @Composable
 fun pdfBrowser(folder: String, name: String, index: Int) {
-    val bitmap = decode(folder, name, index) ?: return
-    Image(
-        modifier = Modifier.fillMaxSize(),
-        bitmap = bitmap,
-        contentDescription = null,
-        contentScale = ContentScale.Fit,
-    )
+    Column {
+        Text(modifier = Modifier.fillMaxWidth(), text = name, textAlign = TextAlign.Center)
+        val bitmap = decode(folder, name, index)
+        if (bitmap != null) {
+            Image(
+                modifier = Modifier.fillMaxSize(),
+                bitmap = bitmap,
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+            )
+        }
+    }
 }
 
 @Composable
@@ -268,6 +278,14 @@ private fun startScreenshotMonitor() {
             }
             val end = nativeEvent.x to nativeEvent.y
             val rect = Rectangle(start.first, start.second, end.first - start.first, end.second - start.second)
+            if (rect.width < 0) {
+                rect.x += rect.width
+                rect.width = -rect.width
+            }
+            if (rect.height < 0) {
+                rect.y += rect.height
+                rect.height = -rect.height
+            }
             val bufferedImage = robot.createScreenCapture(rect)
             val jpgFile = File.createTempFile("screenshot", ".jpg")
             ImageIO.write(bufferedImage, "jpg", jpgFile)
@@ -279,10 +297,11 @@ private fun startScreenshotMonitor() {
 }
 
 private fun decode(folder: String, name: String, index: Int): ImageBitmap? {
-    val pdfDocument: PDDocument
-    try {
-        pdfDocument = PDDocument.load(File(folder + name))
-    } catch (e: IOException) {
+    val pdfDocument: PDDocument = try {
+        PDDocument.load(File(folder + name))
+    } catch (e: InvalidPasswordException) {
+        PDDocument.load(File(folder + name), name.substringBefore("-"))
+    } catch (e: Exception) {
         e.printStackTrace()
         return null
     }
